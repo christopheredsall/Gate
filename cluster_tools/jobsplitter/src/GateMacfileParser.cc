@@ -40,10 +40,8 @@ GateMacfileParser::GateMacfileParser(G4String macfileName,G4int numberOfSplits,G
 	addSliceBool = false;
 	readSliceBool = false;
 	lambda=-1;
-//	usedAliases = new bool[nAliases];
-	//for(int i=0;i<nAliases;i++)usedAliases[i]=false;
-	for(int i=0;i<nAliases;i++)listOfUsedAliases.push_back(false);
-	for(int i=0;i<nAliases;i++)	listOfAliases.push_back(aliasesPtr[i]);
+	usedAliases = new bool[nAliases];
+	for(int i=0;i<nAliases;i++)usedAliases[i]=false;
 	oldSplitNumber=-1;
 
 	//root,ascii are enabled by default but we skeep that in cluster mode
@@ -171,10 +169,10 @@ G4int GateMacfileParser::GenerateResolvedMacro(G4String outputName,G4int splitNu
 		{
 			FormatMacline();
 			InsertAliases();
-			AddAliases();
 			LookForEnableOutput();
 			InsertOutputFileNames(splitNumber,splitfile);
 			SearchForActors(splitNumber,outputMacfile,splitfile);
+			SearchForPhaseSpace(splitNumber,outputMacfile,splitfile);
 			InsertSubMacros(outputMacfile,splitNumber,splitfile);
 			DealWithTimeCommands(outputMacfile,splitNumber,splitfile);
 			IgnoreRandomEngineCommand();
@@ -205,13 +203,12 @@ G4int GateMacfileParser::GenerateResolvedMacro(G4String outputName,G4int splitNu
 		if (enabledOutput+listOfEnabledActorName.size()==0) G4cerr << "***** Warning: No output module nor actor are enabled !" << endl;
 		// Check if all aliases from the command line are used
 		bool flag=true;
-		nAliases = (G4int)listOfUsedAliases.size();
-		for (G4int i=1;i<nAliases;i+=2) flag&=listOfUsedAliases[i];
+		for (G4int i=1;i<nAliases;i+=2) flag&=usedAliases[i];
 		if(flag==false)
 		{
 			G4cerr<<"Could not use the following aliases from the command line:"<<G4endl;
 			for (G4int i=1;i<nAliases;i+=2) 
-				if(!listOfUsedAliases[i]) G4cout<<" "<<listOfAliases[i]<<G4endl;
+				if(!usedAliases[i]) G4cout<<" "<<aliases[i]<<G4endl;
 			return 1; 
 		}
 	}
@@ -223,33 +220,16 @@ G4int GateMacfileParser::GenerateResolvedMacro(G4String outputName,G4int splitNu
 void GateMacfileParser::InsertAliases()
 {
 	G4String insert;
-	nAliases = (G4int)(listOfAliases.size());
 	for (G4int i=1;i<nAliases;i+=2)
 	{
-		while (macline.contains("{"+aliases[i]+"}"))
+		if (macline.contains("{"+aliases[i]+"}"))
 		{
-			insert=listOfAliases[i-1];
-			G4int position=macline.find("{"+listOfAliases[i]+"}",0);
-			G4int length=2+listOfAliases[i].size();
+			insert=aliases[i-1];
+			G4int position=macline.find("{"+aliases[i]+"}",0);
+			G4int length=2+aliases[i].size();
 			macline.replace(position,length,insert);
-			listOfUsedAliases[i]=true;
+			usedAliases[i]=true;
 		}
-	}
-}
-
-void GateMacfileParser::AddAliases()
-{
-	if (macline.contains("/control/alias"))
-	{
-		G4String tmpStr = macline.substr(15,256);
-		int position = tmpStr.find(" ");
-		listOfAliases.push_back( tmpStr.substr(position+1,tmpStr.size()-position));
-		listOfUsedAliases.push_back(false);
-		nAliases++;
-		listOfAliases.push_back( tmpStr.substr(0,position));
-		listOfUsedAliases.push_back(false);
-		nAliases++;
-	//	G4cout<<listOfAliases[nAliases-1] <<":"<<listOfAliases[nAliases-2]<<G4endl;
 	}
 }
 
@@ -282,10 +262,10 @@ void GateMacfileParser::InsertSubMacros(ofstream& output,G4int splitNumber,ofstr
 			{
 				FormatMacline();
 				InsertAliases();
-				AddAliases();
 				LookForEnableOutput();
 				InsertOutputFileNames(splitNumber,splitfile);
 				SearchForActors(splitNumber,output,splitfile);
+				SearchForPhaseSpace(splitNumber,output,splitfile);
 				InsertSubMacros(output,splitNumber,splitfile);
 				DealWithTimeCommands(output,splitNumber,splitfile);
 				output<<macline<<endl;
@@ -379,7 +359,6 @@ void GateMacfileParser::DealWithTimeCommands(ofstream& output,G4int splitNumber,
 		G4int position=subMacline.find(" ",0);
 		G4String timeStart_str=subMacline.substr(0,position);
 		G4String timeUnit_tmp=subMacline.substr(position+1,subMacline.length());
-//	G4cout<< macline<<" :star= " << timeStart_str<< " :unit="<< timeUnit_tmp<< ":"<<timeUnit <<G4endl;
                 if (timeUnit==" -1 ") timeUnit=timeUnit_tmp;
                 else if (timeUnit!=timeUnit_tmp)
                 {
@@ -911,8 +890,8 @@ void GateMacfileParser::SearchForActors(G4int splitNumber,ofstream& output, ofst
       {
         listOfEnabledActorName.push_back(actorName);
         listOfEnabledActorType.push_back(listOfActorType[i]);
-	listOfActorName.erase(listOfActorName.begin()+i);
-	listOfActorType.erase(listOfActorType.begin()+i);
+		listOfActorName.erase(listOfActorName.begin()+i);
+		listOfActorType.erase(listOfActorType.begin()+i);
         findInList=true;
         break;
       }
@@ -930,6 +909,17 @@ void GateMacfileParser::SearchForActors(G4int splitNumber,ofstream& output, ofst
       CleanAbort(output,splitfile);
       exit(1);
     }
+  }
+
+}
+
+void GateMacfileParser::SearchForPhaseSpace(G4int splitNumber,ofstream& output, ofstream& splitfile)
+{
+
+  if (macline.contains("/gate/source/mybeam/addPhaseSpaceFile"))
+  {
+    AddSplitNumberWithExtension(splitNumber);
+	AddPWD("/gate/source/mybeam/addPhaseSpaceFile");
   }
 
 }
@@ -970,13 +960,6 @@ void GateMacfileParser::FormatMacline()
 		macline=temp;
 	}
 
-	//remove "\t"
-        while (macline.contains("\t"))
-        {
-               position = macline.find("\t");
-               macline.replace(position,1," ");
-        }
-	
 	//remove trailing spaces
 	size=macline.length();
 	subString=macline(size-1);

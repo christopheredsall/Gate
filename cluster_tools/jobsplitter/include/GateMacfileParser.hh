@@ -74,12 +74,8 @@ public:
   std::vector<G4String> listOfActorName;
   std::vector<G4String> listOfEnabledActorType;
   std::vector<G4String> listOfEnabledActorName;
-  // Add alias
-  std::vector<G4String> listOfAliases;
-  std::vector<bool> listOfUsedAliases;
   // Member functions
   void InsertAliases();
-  void AddAliases();
   void InsertSubMacros(std::ofstream& output,G4int splitNumber,std::ofstream& splitfile);
   void DealWithTimeCommands(std::ofstream& output,G4int splitNumber,std::ofstream& splitfile);
   void IgnoreRandomEngineCommand();
@@ -87,6 +83,7 @@ public:
   G4int GenerateResolvedMacro(G4String outputName,G4int splitNumber,std::ofstream& splitfile);
   void InsertOutputFileNames(G4int splitNumber,std::ofstream& splitfile);
   void SearchForActors(G4int splitNumber,std::ofstream& output, std::ofstream& splitfile);
+  void SearchForPhaseSpace(G4int splitNumber,std::ofstream& output, std::ofstream& splitfile);
   void AddSplitNumberWithExtension(G4int splitNumber);
   bool IsComment(G4String line);
   void FormatMacline();

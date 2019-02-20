@@ -58,24 +58,40 @@ void GateSplitManager::StartSplitting()
  G4String outputMacDir;
  G4int err=0;
  G4String dir=getenv("GC_DOT_GATE_DIR");
- if (dir.substr(dir.length()-1,dir.length())=="/") dir=dir+".Gate/";
- else dir=dir+"/.Gate/";
- std::ifstream dirstream(dir.c_str());
- if (!dirstream) { 
- const G4String mkdir("mkdir "+dir); 
- if(m_verboseLevel>1)cout<<"Information : Creating a .Gate directory... "; 
- const int res = system(mkdir.c_str()); 
+ G4String macDir=getenv("GC_GATE_MAC_DIR"); 
+//if (dir.substr(dir.length()-1,dir.length())=="/") dir=dir+".Gate/";
+// else dir=dir+"/.Gate/";
+// std::ifstream dirstream(dir.c_str());
+// if (!dirstream) { 
+// const G4String mkdir("mkdir "+dir); 
+// if(m_verboseLevel>1)cout<<"Information : Creating a .Gate directory... "; 
+// const int res = system(mkdir.c_str()); 
+// if(m_verboseLevel>1)cout<<"done"<<endl;
+// if (res!=0) 
+//  {
+//   cout<<"Error : Failed to create .Gate directory"<<endl;
+//   CleanAbort();
+//  }
+// }
+if (macDir.substr(macDir.length()-1,macDir.length())=="/") macDir=macDir+".Gate/";
+ else macDir=macDir+"/.Gate/";
+ std::ifstream macDirstream(macDir.c_str());
+ if (!macDirstream) { 
+ const G4String macMkdir("mkdir "+macDir); 
+ if(m_verboseLevel>1)cout<<"Information : Creating a .Gate directory for macros... "; 
+ const int macRes = system(macMkdir.c_str()); 
  if(m_verboseLevel>1)cout<<"done"<<endl;
- if (res!=0) 
+ if (macRes!=0) 
   {
    cout<<"Error : Failed to create .Gate directory"<<endl;
    CleanAbort();
   }
  }
 
- dirstream.close();
+// dirstream.close();
+ macDirstream.close();
  //call macParser to generate fully resolved macros + splitfile
- err=macParser->GenerateResolvedMacros(dir/*SIMON ,seeds*/);
+ err=macParser->GenerateResolvedMacros(macDir/*SIMON ,seeds*/);
  if (err) CleanAbort();
  else outputMacDir=macParser->GetOutputMacDir();
  //call toPlatform to generate submit file
